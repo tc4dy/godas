@@ -1,3 +1,4 @@
+![Godas Banner](godasbanner.png)
 # GODAS | Go Data Analysis Suite 📁 (Godas Project📍) 
 
 <div align="center">
@@ -533,6 +534,8 @@ make build   # go build -o bin/godas ./cmd/godas
 ```
 
 ---
+
+![Godas Logo](godaslogo.png)
 
 <div align="center">
 
