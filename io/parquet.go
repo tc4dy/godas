@@ -2,6 +2,7 @@ package io
 
 import (
 	"fmt"
+	"context"
 	"math"
 	"os"
 
@@ -61,7 +62,7 @@ func ReadParquet(path string, opts ...ParquetOption) (*dataframe.DataFrame, erro
 		return nil, fmt.Errorf("godas: arrow reader error: %w", err)
 	}
 
-	tbl, err := arrowRdr.ReadTable(nil)
+	tbl, err := arrowRdr.ReadTable(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("godas: read table error: %w", err)
 	}
