@@ -9,9 +9,8 @@ import (
 	"github.com/apache/arrow/go/v14/arrow/array"
 	"github.com/apache/arrow/go/v14/arrow/memory"
 	"github.com/apache/arrow/go/v14/parquet"
-	"github.com/apache/arrow/go/v14/parquet/arrow/reader"
-	"github.com/apache/arrow/go/v14/parquet/arrow/writer"
 	"github.com/apache/arrow/go/v14/parquet/file"
+	"github.com/apache/arrow/go/v14/parquet/pqarrow"
 
 	"github.com/tc4dy/godas/dataframe"
 	"github.com/tc4dy/godas/series"
@@ -57,34 +56,28 @@ func ReadParquet(path string, opts ...ParquetOption) (*dataframe.DataFrame, erro
 	}
 	defer rdr.Close()
 
-	arrowRdr, err := reader.NewParquetReader(rdr, nil, nil)
+	arrowRdr, err := pqarrow.NewFileReader(rdr, pqarrow.ArrowReadProperties{}, memory.DefaultAllocator)
 	if err != nil {
 		return nil, fmt.Errorf("godas: arrow reader error: %w", err)
 	}
-	defer arrowRdr.Close()
 
-	allCols := make([]*series.Series, 0)
-	colNames := make(map[string]bool)
+	tbl, err := arrowRdr.ReadTable(nil)
+	if err != nil {
+		return nil, fmt.Errorf("godas: read table error: %w", err)
+	}
+	defer tbl.Release()
 
-	for {
-		rec, err := arrowRdr.Read()
-		if err != nil {
-			break
+	allCols := make([]*series.Series, 0, int(tbl.NumCols()))
+
+	for i := 0; i < int(tbl.NumCols()); i++ {
+		col := tbl.Column(i)
+		name := tbl.Schema().Field(i).Name
+		chunks := col.Data().Chunks()
+		if len(chunks) == 0 {
+			continue
 		}
-
-		for i := 0; i < int(rec.NumCols()); i++ {
-			col := rec.Column(i)
-			name := rec.Schema().Field(i).Name
-
-			if colNames[name] {
-				continue
-			}
-			colNames[name] = true
-
-			s := arrowToSeries(name, col)
-			allCols = append(allCols, s)
-		}
-		rec.Release()
+		s := arrowToSeries(name, chunks[0])
+		allCols = append(allCols, s)
 	}
 
 	if len(allCols) == 0 {
@@ -135,7 +128,7 @@ func arrowToSeries(name string, col arrow.Array) *series.Series {
 		}
 		return series.NewString(name, vals)
 
-	case arrow.BOOLEAN:
+	case arrow.BOOL:
 		data := col.(*array.Boolean)
 		vals := make([]bool, data.Len())
 		for i := 0; i < data.Len(); i++ {
@@ -144,15 +137,7 @@ func arrowToSeries(name string, col arrow.Array) *series.Series {
 		return series.NewBool(name, vals)
 
 	default:
-		data := col.(*array.String)
-		vals := make([]string, data.Len())
-		for i := 0; i < data.Len(); i++ {
-			if data.IsNull(i) {
-				continue
-			}
-			vals[i] = data.Value(i)
-		}
-		return series.NewString(name, vals)
+		return series.NewString(name, []string{})
 	}
 }
 
@@ -238,7 +223,8 @@ func WriteParquet(df *dataframe.DataFrame, path string) error {
 	defer f.Close()
 
 	props := parquet.NewWriterProperties()
-	wr, err := writer.NewParquetWriter(f, schema, props)
+	arrowProps := pqarrow.NewArrowWriterProperties()
+	wr, err := pqarrow.NewFileWriter(schema, f, props, arrowProps)
 	if err != nil {
 		return fmt.Errorf("godas: parquet writer error: %w", err)
 	}
