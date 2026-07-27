@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/tc4dy/godas/dataframe"
