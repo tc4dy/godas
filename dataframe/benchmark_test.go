@@ -1,4 +1,4 @@
-package stream
+package dataframe
 
 import "github.com/tc4dy/godas/dataframe"
 
