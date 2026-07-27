@@ -1,7 +1,6 @@
 package io_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
