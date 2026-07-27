@@ -159,7 +159,7 @@ func Std(s *series.Series) float64 {
 		d := v - m
 		variance += d * d
 	}
-	return math.Sqrt(variance / float64(len(vals)-1))
+	return math.Sqrt(variance / float64(len(vals)))
 }
 
 func Median(s *series.Series) float64 {
