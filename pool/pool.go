@@ -23,11 +23,11 @@ var boolPool = sync.Pool{
 	},
 }
 
-func GetFloat64(cap int) []float64 {
+func GetFloat64(size int) []float64 {
 	p := float64Pool.Get().(*[]float64)
 	s := *p
-	if cap > 0 && cap(s) < cap {
-		s = make([]float64, 0, cap)
+	if size > 0 && cap(s) < size {
+		s = make([]float64, 0, size)
 	}
 	return s[:0]
 }
@@ -37,11 +37,11 @@ func PutFloat64(s []float64) {
 	float64Pool.Put(p)
 }
 
-func GetString(cap int) []string {
+func GetString(size int) []string {
 	p := stringPool.Get().(*[]string)
 	s := *p
-	if cap > 0 && cap(s) < cap {
-		s = make([]string, 0, cap)
+	if size > 0 && cap(s) < size {
+		s = make([]string, 0, size)
 	}
 	return s[:0]
 }
@@ -51,11 +51,11 @@ func PutString(s []string) {
 	stringPool.Put(p)
 }
 
-func GetBool(cap int) []bool {
+func GetBool(size int) []bool {
 	p := boolPool.Get().(*[]bool)
 	s := *p
-	if cap > 0 && cap(s) < cap {
-		s = make([]bool, 0, cap)
+	if size > 0 && cap(s) < size {
+		s = make([]bool, 0, size)
 	}
 	return s[:0]
 }
