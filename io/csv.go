@@ -148,13 +148,17 @@ func inferAndBuild(name string, vals []string, nullVal string) *series.Series {
 
 	if allInt {
 		data := make([]int64, len(vals))
+		nulls := make([]bool, len(vals))
 		for i, v := range vals {
-			if v == nullVal {
+			if nullVal != "" && v == nullVal {
+				nulls[i] = true
 				continue
 			}
 			data[i], _ = strconv.ParseInt(v, 10, 64)
 		}
-		return series.NewInt64(name, data)
+		s := series.NewInt64(name, data)
+		copy(s.Nulls(), nulls)
+		return s
 	}
 
 	if allFloat {
