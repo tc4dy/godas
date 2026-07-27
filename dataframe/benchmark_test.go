@@ -1,7 +1,7 @@
 package dataframe
 
-type PipeFunc func(*dataframe.DataFrame) (*dataframe.DataFrame, error)
+type PipeFunc func(*DataFrame) (*DataFrame, error)
 
-func Func(fn func(*dataframe.DataFrame) (*dataframe.DataFrame, error)) PipeFunc {
+func Func(fn func(*DataFrame) (*DataFrame, error)) PipeFunc {
 	return fn
 }
