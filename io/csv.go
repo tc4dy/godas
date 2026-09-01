@@ -103,9 +103,8 @@ func ReadCSV(path string, opts ...CSVOption) (*dataframe.DataFrame, error) {
 
 	cols := make([]*series.Series, nCols)
 	var wg sync.WaitGroup
-	errs := make([]error, nCols)
-
 	sem := make(chan struct{}, options.Workers)
+
 	for ci := 0; ci < nCols; ci++ {
 		wg.Add(1)
 		sem <- struct{}{}
@@ -117,11 +116,6 @@ func ReadCSV(path string, opts ...CSVOption) (*dataframe.DataFrame, error) {
 	}
 	wg.Wait()
 
-	for _, e := range errs {
-		if e != nil {
-			return nil, e
-		}
-	}
 	return dataframe.New(cols...)
 }
 
@@ -129,11 +123,13 @@ func inferAndBuild(name string, vals []string, nullVal string) *series.Series {
 	allInt := true
 	allFloat := true
 	allBool := true
+	allNull := true
 
 	for _, v := range vals {
 		if v == nullVal {
 			continue
 		}
+		allNull = false
 		if _, err := strconv.ParseInt(v, 10, 64); err != nil {
 			allInt = false
 		}
@@ -146,15 +142,24 @@ func inferAndBuild(name string, vals []string, nullVal string) *series.Series {
 		}
 	}
 
+	if allNull {
+		return series.NewString(name, make([]string, len(vals)))
+	}
+
 	if allInt {
 		data := make([]int64, len(vals))
 		nulls := make([]bool, len(vals))
 		for i, v := range vals {
-			if nullVal != "" && v == nullVal {
+			if v == nullVal {
 				nulls[i] = true
 				continue
 			}
-			data[i], _ = strconv.ParseInt(v, 10, 64)
+			val, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				nulls[i] = true
+				continue
+			}
+			data[i] = val
 		}
 		s := series.NewInt64(name, data)
 		copy(s.Nulls(), nulls)
@@ -168,25 +173,50 @@ func inferAndBuild(name string, vals []string, nullVal string) *series.Series {
 				data[i] = math.NaN()
 				continue
 			}
-			data[i], _ = strconv.ParseFloat(v, 64)
+			val, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				data[i] = math.NaN()
+				continue
+			}
+			data[i] = val
 		}
 		return series.NewFloat64(name, data)
 	}
 
 	if allBool {
 		data := make([]bool, len(vals))
+		nulls := make([]bool, len(vals))
 		for i, v := range vals {
 			if v == nullVal {
+				nulls[i] = true
 				continue
 			}
-			data[i] = strings.ToLower(v) == "true"
+			lower := strings.ToLower(v)
+			if lower == "true" {
+				data[i] = true
+			} else if lower == "false" {
+				data[i] = false
+			} else {
+				nulls[i] = true
+			}
 		}
-		return series.NewBool(name, data)
+		s := series.NewBool(name, data)
+		copy(s.Nulls(), nulls)
+		return s
 	}
 
 	data := make([]string, len(vals))
-	copy(data, vals)
-	return series.NewString(name, data)
+	nulls := make([]bool, len(vals))
+	for i, v := range vals {
+		if v == nullVal {
+			nulls[i] = true
+			continue
+		}
+		data[i] = v
+	}
+	s := series.NewString(name, data)
+	copy(s.Nulls(), nulls)
+	return s
 }
 
 type CSVWriteOptions struct {
