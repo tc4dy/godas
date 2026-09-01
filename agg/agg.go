@@ -23,9 +23,9 @@ const (
 )
 
 type Agg struct {
-	col    string
-	kind   Kind
-	alias  string
+	col   string
+	kind  Kind
+	alias string
 }
 
 func Sum(col string) Agg    { return Agg{col: col, kind: KindSum, alias: "sum_" + col} }
@@ -50,9 +50,15 @@ func (a Agg) Apply(s *series.Series) (float64, error) {
 	if a.kind == KindCount {
 		return float64(stats.Count(s)), nil
 	}
+
+	if a.kind == KindFirst || a.kind == KindLast {
+		return a.applyFirstLast(s)
+	}
+
 	if s.DType() != series.Float64 && s.DType() != series.Int64 {
 		return math.NaN(), fmt.Errorf("godas: aggregation %q requires numeric column, got %s", a.alias, s.DType())
 	}
+
 	switch a.kind {
 	case KindSum:
 		return stats.Sum(s), nil
@@ -66,22 +72,76 @@ func (a Agg) Apply(s *series.Series) (float64, error) {
 		return stats.Std(s), nil
 	case KindMedian:
 		return stats.Median(s), nil
-	case KindFirst:
-		for i := 0; i < s.Len(); i++ {
-			v, ok := s.GetFloat64(i)
-			if ok {
-				return v, nil
-			}
-		}
-		return math.NaN(), nil
-	case KindLast:
-		for i := s.Len() - 1; i >= 0; i-- {
-			v, ok := s.GetFloat64(i)
-			if ok {
-				return v, nil
-			}
-		}
-		return math.NaN(), nil
 	}
 	return math.NaN(), fmt.Errorf("godas: unknown aggregation kind %d", a.kind)
+}
+
+func (a Agg) applyFirstLast(s *series.Series) (float64, error) {
+	switch s.DType() {
+	case series.Float64:
+		raw := s.RawFloats()
+		nulls := s.Nulls()
+		if a.kind == KindFirst {
+			for i := 0; i < len(raw); i++ {
+				if !nulls[i] {
+					return raw[i], nil
+				}
+			}
+		} else {
+			for i := len(raw) - 1; i >= 0; i-- {
+				if !nulls[i] {
+					return raw[i], nil
+				}
+			}
+		}
+		return math.NaN(), nil
+
+	case series.Int64:
+		raw := s.RawInts()
+		nulls := s.Nulls()
+		if a.kind == KindFirst {
+			for i := 0; i < len(raw); i++ {
+				if !nulls[i] {
+					return float64(raw[i]), nil
+				}
+			}
+		} else {
+			for i := len(raw) - 1; i >= 0; i-- {
+				if !nulls[i] {
+					return float64(raw[i]), nil
+				}
+			}
+		}
+		return math.NaN(), nil
+
+	case series.Bool:
+		raw := s.RawBools()
+		nulls := s.Nulls()
+		if a.kind == KindFirst {
+			for i := 0; i < len(raw); i++ {
+				if !nulls[i] {
+					if raw[i] {
+						return 1.0, nil
+					}
+					return 0.0, nil
+				}
+			}
+		} else {
+			for i := len(raw) - 1; i >= 0; i-- {
+				if !nulls[i] {
+					if raw[i] {
+						return 1.0, nil
+					}
+					return 0.0, nil
+				}
+			}
+		}
+		return math.NaN(), nil
+
+	case series.String:
+		return math.NaN(), fmt.Errorf("godas: First/Last not supported for string column %q", s.Name())
+
+	default:
+		return math.NaN(), fmt.Errorf("godas: unsupported type %s for First/Last", s.DType())
+	}
 }
