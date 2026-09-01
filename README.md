@@ -1,14 +1,13 @@
 ![Godas Banner](godasbanner.png)
 # GODAS | Go Data Analysis Suite 📁 (Godas Project) 
-[![Awesome](https://awesome.re/badge-flat2.svg)](https://awesome.re)
 
 <div align="center">
   
 [![Go Version](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat-square&logo=go)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-MIT-6A4E9C?style=flat-square)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/tc4dy/godas/go.yml?branch=main&style=flat-square&label=CI&color=6A4E9C)](https://github.com/tc4dy/godas/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/tc4dy/godas?style=flat-square)](https://goreportcard.com/report/github.com/tc4dy/godas)
-[![Coverage](https://img.shields.io/badge/coverage-80%25-228B22?style=flat-square)](#testing)
+[![CI](https://img.shields.io/github/actions/workflow/status/tc4dy/godas/go.yml?branch=main&style=flat-square&label=CI&color=28A745)](https://github.com/tc4dy/godas/actions)
+[![Awesome](https://img.shields.io/badge/Awesome-FFA500?style=flat-square&logo=awesome&logoColor=white)](https://github.com/avelino/awesome-go)
+[![Coverage](https://img.shields.io/badge/coverage-80%25-6A4E9C?style=flat-square)](#testing)
 [![Go Reference](https://img.shields.io/badge/Go-Reference-00ADD8?style=flat-square&logo=go)](https://pkg.go.dev/github.com/tc4dy/godas)
 
 **A high-performance, idiomatic data analysis library for Go.**
