@@ -9,8 +9,8 @@ import (
 )
 
 func TestInnerJoin(t *testing.T) {
-	left := makeDF([]string{"id", "name"}, [][]any{{1, "Alice"}, {2, "Bob"}, {3, "Charlie"}})
-	right := makeDF([]string{"id", "score"}, [][]any{{1, 95}, {2, 88}, {4, 70}})
+	left := makeDF([]string{"id", "name"}, [][]any{{int64(1), "Alice"}, {int64(2), "Bob"}, {int64(3), "Charlie"}})
+	right := makeDF([]string{"id", "score"}, [][]any{{int64(1), 95}, {int64(2), 88}, {int64(4), 70}})
 	result, err := join.Inner(left, right, "id")
 	if err != nil {
 		t.Fatal(err)
@@ -21,8 +21,8 @@ func TestInnerJoin(t *testing.T) {
 }
 
 func TestLeftJoin(t *testing.T) {
-	left := makeDF([]string{"id", "name"}, [][]any{{1, "Alice"}, {2, "Bob"}, {3, "Charlie"}})
-	right := makeDF([]string{"id", "score"}, [][]any{{1, 95}, {2, 88}, {4, 70}})
+	left := makeDF([]string{"id", "name"}, [][]any{{int64(1), "Alice"}, {int64(2), "Bob"}, {int64(3), "Charlie"}})
+	right := makeDF([]string{"id", "score"}, [][]any{{int64(1), 95}, {int64(2), 88}, {int64(4), 70}})
 	result, err := join.Left(left, right, "id")
 	if err != nil {
 		t.Fatal(err)
@@ -33,8 +33,8 @@ func TestLeftJoin(t *testing.T) {
 }
 
 func TestRightJoin(t *testing.T) {
-	left := makeDF([]string{"id", "name"}, [][]any{{1, "Alice"}, {2, "Bob"}, {3, "Charlie"}})
-	right := makeDF([]string{"id", "score"}, [][]any{{1, 95}, {2, 88}, {4, 70}})
+	left := makeDF([]string{"id", "name"}, [][]any{{int64(1), "Alice"}, {int64(2), "Bob"}, {int64(3), "Charlie"}})
+	right := makeDF([]string{"id", "score"}, [][]any{{int64(1), 95}, {int64(2), 88}, {int64(4), 70}})
 	result, err := join.Right(left, right, "id")
 	if err != nil {
 		t.Fatal(err)
@@ -45,8 +45,8 @@ func TestRightJoin(t *testing.T) {
 }
 
 func TestJoinMissingKey(t *testing.T) {
-	left := makeDF([]string{"id"}, [][]any{{1}})
-	right := makeDF([]string{"x"}, [][]any{{1}})
+	left := makeDF([]string{"id"}, [][]any{{int64(1)}})
+	right := makeDF([]string{"x"}, [][]any{{int64(1)}})
 	_, err := join.Inner(left, right, "id")
 	if err == nil {
 		t.Fatal("expected error for missing key")
@@ -55,7 +55,7 @@ func TestJoinMissingKey(t *testing.T) {
 
 func TestJoinEmptyLeft(t *testing.T) {
 	left, _ := dataframe.New()
-	right := makeDF([]string{"id"}, [][]any{{1}})
+	right := makeDF([]string{"id"}, [][]any{{int64(1)}})
 	_, err := join.Inner(left, right, "id")
 	if err == nil {
 		t.Fatal("expected error for empty left")
@@ -70,6 +70,12 @@ func makeDF(cols []string, rows [][]any) *dataframe.DataFrame {
 			vals[j] = row[i]
 		}
 		switch vals[0].(type) {
+		case int64:
+			ints := make([]int64, len(vals))
+			for k, v := range vals {
+				ints[k] = v.(int64)
+			}
+			seriesList[i] = series.NewInt64(col, ints)
 		case int:
 			ints := make([]int64, len(vals))
 			for k, v := range vals {
