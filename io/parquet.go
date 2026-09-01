@@ -1,8 +1,8 @@
 package io
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"math"
 	"os"
 
@@ -93,49 +93,78 @@ func arrowToSeries(name string, col arrow.Array) *series.Series {
 	case arrow.FLOAT64:
 		data := col.(*array.Float64)
 		vals := make([]float64, data.Len())
+		nulls := make([]bool, data.Len())
 		for i := 0; i < data.Len(); i++ {
 			if data.IsNull(i) {
+				nulls[i] = true
 				vals[i] = math.NaN()
 			} else {
 				vals[i] = data.Value(i)
 			}
 		}
-		return series.NewFloat64(name, vals)
+		s := series.NewFloat64(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
 
 	case arrow.INT64:
 		data := col.(*array.Int64)
 		vals := make([]int64, data.Len())
-		for i := 0; i < data.Len(); i++ {
-			vals[i] = data.Value(i)
-		}
-		return series.NewInt64(name, vals)
-
-	case arrow.INT32:
-		data := col.(*array.Int32)
-		vals := make([]int64, data.Len())
-		for i := 0; i < data.Len(); i++ {
-			vals[i] = int64(data.Value(i))
-		}
-		return series.NewInt64(name, vals)
-
-	case arrow.STRING:
-		data := col.(*array.String)
-		vals := make([]string, data.Len())
+		nulls := make([]bool, data.Len())
 		for i := 0; i < data.Len(); i++ {
 			if data.IsNull(i) {
+				nulls[i] = true
 				continue
 			}
 			vals[i] = data.Value(i)
 		}
-		return series.NewString(name, vals)
+		s := series.NewInt64(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
+
+	case arrow.INT32:
+		data := col.(*array.Int32)
+		vals := make([]int64, data.Len())
+		nulls := make([]bool, data.Len())
+		for i := 0; i < data.Len(); i++ {
+			if data.IsNull(i) {
+				nulls[i] = true
+				continue
+			}
+			vals[i] = int64(data.Value(i))
+		}
+		s := series.NewInt64(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
+
+	case arrow.STRING:
+		data := col.(*array.String)
+		vals := make([]string, data.Len())
+		nulls := make([]bool, data.Len())
+		for i := 0; i < data.Len(); i++ {
+			if data.IsNull(i) {
+				nulls[i] = true
+				continue
+			}
+			vals[i] = data.Value(i)
+		}
+		s := series.NewString(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
 
 	case arrow.BOOL:
 		data := col.(*array.Boolean)
 		vals := make([]bool, data.Len())
+		nulls := make([]bool, data.Len())
 		for i := 0; i < data.Len(); i++ {
+			if data.IsNull(i) {
+				nulls[i] = true
+				continue
+			}
 			vals[i] = data.Value(i)
 		}
-		return series.NewBool(name, vals)
+		s := series.NewBool(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
 
 	default:
 		return series.NewString(name, []string{})
@@ -159,8 +188,9 @@ func WriteParquet(df *dataframe.DataFrame, path string) error {
 			fields[i] = arrow.Field{Name: name, Type: arrow.PrimitiveTypes.Float64}
 			builder := array.NewFloat64Builder(memory.DefaultAllocator)
 			raw := s.RawFloats()
+			nulls := s.Nulls()
 			for j, v := range raw {
-				if s.IsNull(j) {
+				if nulls[j] {
 					builder.AppendNull()
 				} else {
 					builder.Append(v)
@@ -173,8 +203,9 @@ func WriteParquet(df *dataframe.DataFrame, path string) error {
 			fields[i] = arrow.Field{Name: name, Type: arrow.PrimitiveTypes.Int64}
 			builder := array.NewInt64Builder(memory.DefaultAllocator)
 			raw := s.RawInts()
+			nulls := s.Nulls()
 			for j, v := range raw {
-				if s.IsNull(j) {
+				if nulls[j] {
 					builder.AppendNull()
 				} else {
 					builder.Append(v)
@@ -187,8 +218,9 @@ func WriteParquet(df *dataframe.DataFrame, path string) error {
 			fields[i] = arrow.Field{Name: name, Type: arrow.BinaryTypes.String}
 			builder := array.NewStringBuilder(memory.DefaultAllocator)
 			raw := s.RawStrings()
+			nulls := s.Nulls()
 			for j, v := range raw {
-				if s.IsNull(j) {
+				if nulls[j] {
 					builder.AppendNull()
 				} else {
 					builder.Append(v)
@@ -201,8 +233,9 @@ func WriteParquet(df *dataframe.DataFrame, path string) error {
 			fields[i] = arrow.Field{Name: name, Type: arrow.FixedWidthTypes.Boolean}
 			builder := array.NewBooleanBuilder(memory.DefaultAllocator)
 			raw := s.RawBools()
+			nulls := s.Nulls()
 			for j, v := range raw {
-				if s.IsNull(j) {
+				if nulls[j] {
 					builder.AppendNull()
 				} else {
 					builder.Append(v)
