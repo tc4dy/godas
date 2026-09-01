@@ -69,7 +69,7 @@ func makeDF(cols []string, rows [][]any) *dataframe.DataFrame {
 		for j, row := range rows {
 			vals[j] = row[i]
 		}
-		switch v := vals[0].(type) {
+		switch vals[0].(type) {
 		case int:
 			ints := make([]int64, len(vals))
 			for k, val := range vals {
