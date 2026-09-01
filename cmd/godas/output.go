@@ -19,6 +19,13 @@ const (
 )
 
 func printDataFrame(df *dataframe.DataFrame, format OutputFormat) error {
+	if df == nil {
+		return fmt.Errorf("godas: dataframe is nil")
+	}
+	if df.NRows() == 0 {
+		fmt.Println("Empty dataframe")
+		return nil
+	}
 	switch format {
 	case Table:
 		return printTable(df)
@@ -35,7 +42,11 @@ func printTable(df *dataframe.DataFrame) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(df.ColumnNames())
 	rows := df.NRows()
-	for i := 0; i < rows && i < 50; i++ {
+	maxRows := rows
+	if maxRows > 50 {
+		maxRows = 50
+	}
+	for i := 0; i < maxRows; i++ {
 		row := make([]string, df.NCols())
 		for j, col := range df.ColumnNames() {
 			s := df.MustCol(col)
@@ -44,9 +55,10 @@ func printTable(df *dataframe.DataFrame) error {
 		table.Append(row)
 	}
 	if rows > 50 {
-		table.Append([]string{"..."})
+		table.Append([]string{fmt.Sprintf("... %d more rows", rows-50)})
 	}
 	table.Render()
+	fmt.Printf("\n[%d rows x %d cols]\n", rows, df.NCols())
 	return nil
 }
 
