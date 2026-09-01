@@ -4,11 +4,11 @@
 <div align="center">
 
 [![Go Version](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=flat-square&logo=go)](https://golang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/tc4dy/godas/go.yml?branch=main&style=flat-square&label=CI)](https://github.com/tc4dy/godas/actions)
+[![License](https://img.shields.io/badge/License-MIT-6A4E9C?style=flat-square)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/tc4dy/godas/go.yml?branch=main&style=flat-square&label=CI&color=6A4E9C)](https://github.com/tc4dy/godas/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tc4dy/godas?style=flat-square)](https://goreportcard.com/report/github.com/tc4dy/godas)
-[![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen?style=flat-square)](#testing)
-[![Go Reference](https://pkg.go.dev/badge/github.com/tc4dy/godas.svg)](https://pkg.go.dev/github.com/tc4dy/godas)
+[![Coverage](https://img.shields.io/badge/coverage-80%25-FFA500?style=flat-square)](#testing)
+[![Go Reference](https://img.shields.io/badge/Go-Reference-00ADD8?style=flat-square&logo=go)](https://pkg.go.dev/github.com/tc4dy/godas)
 
 **A high-performance, idiomatic data analysis library for Go.**
 
