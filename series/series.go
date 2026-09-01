@@ -183,16 +183,21 @@ func (s *Series) Slice(start, end int) *Series {
 		panic(fmt.Sprintf("godas: slice [%d:%d] out of bounds for series length %d", start, end, s.len))
 	}
 	count := end - start
-	out := &Series{name: s.name, dtype: s.dtype, len: count, nulls: s.nulls[start:end]}
+	out := &Series{name: s.name, dtype: s.dtype, len: count, nulls: make([]bool, count)}
+	copy(out.nulls, s.nulls[start:end])
 	switch s.dtype {
 	case Float64:
-		out.floats = s.floats[start:end]
+		out.floats = make([]float64, count)
+		copy(out.floats, s.floats[start:end])
 	case Int64:
-		out.ints = s.ints[start:end]
+		out.ints = make([]int64, count)
+		copy(out.ints, s.ints[start:end])
 	case String:
-		out.strs = s.strs[start:end]
+		out.strs = make([]string, count)
+		copy(out.strs, s.strs[start:end])
 	case Bool:
-		out.bools = s.bools[start:end]
+		out.bools = make([]bool, count)
+		copy(out.bools, s.bools[start:end])
 	}
 	return out
 }
@@ -243,24 +248,40 @@ func (s *Series) Reorder(indices []int) *Series {
 	case Float64:
 		out.floats = make([]float64, len(indices))
 		for i, idx := range indices {
+			if idx < 0 || idx >= s.len {
+				out.nulls[i] = true
+				continue
+			}
 			out.floats[i] = s.floats[idx]
 			out.nulls[i] = s.nulls[idx]
 		}
 	case Int64:
 		out.ints = make([]int64, len(indices))
 		for i, idx := range indices {
+			if idx < 0 || idx >= s.len {
+				out.nulls[i] = true
+				continue
+			}
 			out.ints[i] = s.ints[idx]
 			out.nulls[i] = s.nulls[idx]
 		}
 	case String:
 		out.strs = make([]string, len(indices))
 		for i, idx := range indices {
+			if idx < 0 || idx >= s.len {
+				out.nulls[i] = true
+				continue
+			}
 			out.strs[i] = s.strs[idx]
 			out.nulls[i] = s.nulls[idx]
 		}
 	case Bool:
 		out.bools = make([]bool, len(indices))
 		for i, idx := range indices {
+			if idx < 0 || idx >= s.len {
+				out.nulls[i] = true
+				continue
+			}
 			out.bools[i] = s.bools[idx]
 			out.nulls[i] = s.nulls[idx]
 		}
@@ -273,32 +294,47 @@ func (s *Series) Append(other *Series) (*Series, error) {
 		return nil, fmt.Errorf("godas: cannot append series of type %s to %s", other.dtype, s.dtype)
 	}
 	out := &Series{name: s.name, dtype: s.dtype, len: s.len + other.len}
-	out.nulls = append(append([]bool{}, s.nulls...), other.nulls...)
+	out.nulls = make([]bool, s.len+other.len)
+	copy(out.nulls, s.nulls)
+	copy(out.nulls[s.len:], other.nulls)
 	switch s.dtype {
 	case Float64:
-		out.floats = append(append([]float64{}, s.floats...), other.floats...)
+		out.floats = make([]float64, s.len+other.len)
+		copy(out.floats, s.floats)
+		copy(out.floats[s.len:], other.floats)
 	case Int64:
-		out.ints = append(append([]int64{}, s.ints...), other.ints...)
+		out.ints = make([]int64, s.len+other.len)
+		copy(out.ints, s.ints)
+		copy(out.ints[s.len:], other.ints)
 	case String:
-		out.strs = append(append([]string{}, s.strs...), other.strs...)
+		out.strs = make([]string, s.len+other.len)
+		copy(out.strs, s.strs)
+		copy(out.strs[s.len:], other.strs)
 	case Bool:
-		out.bools = append(append([]bool{}, s.bools...), other.bools...)
+		out.bools = make([]bool, s.len+other.len)
+		copy(out.bools, s.bools)
+		copy(out.bools[s.len:], other.bools)
 	}
 	return out, nil
 }
 
 func (s *Series) Clone() *Series {
 	out := &Series{name: s.name, dtype: s.dtype, len: s.len}
-	out.nulls = append([]bool{}, s.nulls...)
+	out.nulls = make([]bool, s.len)
+	copy(out.nulls, s.nulls)
 	switch s.dtype {
 	case Float64:
-		out.floats = append([]float64{}, s.floats...)
+		out.floats = make([]float64, s.len)
+		copy(out.floats, s.floats)
 	case Int64:
-		out.ints = append([]int64{}, s.ints...)
+		out.ints = make([]int64, s.len)
+		copy(out.ints, s.ints)
 	case String:
-		out.strs = append([]string{}, s.strs...)
+		out.strs = make([]string, s.len)
+		copy(out.strs, s.strs)
 	case Bool:
-		out.bools = append([]bool{}, s.bools...)
+		out.bools = make([]bool, s.len)
+		copy(out.bools, s.bools)
 	}
 	return out
 }
@@ -321,19 +357,19 @@ func (s *Series) ValueAt(i int) any {
 }
 
 func (s *Series) StringAt(i int) string {
-	v := s.ValueAt(i)
-	if v == nil {
+	if s.nulls[i] {
 		return "null"
 	}
-	switch val := v.(type) {
-	case float64:
-		return strconv.FormatFloat(val, 'f', 4, 64)
-	case int64:
-		return strconv.FormatInt(val, 10)
-	case string:
-		return val
-	case bool:
-		return strconv.FormatBool(val)
+	switch s.dtype {
+	case Float64:
+		return strconv.FormatFloat(s.floats[i], 'f', 4, 64)
+	case Int64:
+		return strconv.FormatInt(s.ints[i], 10)
+	case String:
+		return s.strs[i]
+	case Bool:
+		return strconv.FormatBool(s.bools[i])
+	default:
+		return "null"
 	}
-	return ""
 }
