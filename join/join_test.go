@@ -1,188 +1,101 @@
-package join
+package join_test
 
 import (
-	"fmt"
+	"testing"
 
 	"github.com/tc4dy/godas/dataframe"
+	"github.com/tc4dy/godas/join"
 	"github.com/tc4dy/godas/series"
 )
 
-type joinType int
-
-const (
-	joinInner joinType = iota
-	joinLeft
-	joinRight
-)
-
-func Inner(left, right *dataframe.DataFrame, on string) (*dataframe.DataFrame, error) {
-	return perform(left, right, on, joinInner)
-}
-
-func Left(left, right *dataframe.DataFrame, on string) (*dataframe.DataFrame, error) {
-	return perform(left, right, on, joinLeft)
-}
-
-func Right(left, right *dataframe.DataFrame, on string) (*dataframe.DataFrame, error) {
-	return perform(left, right, on, joinRight)
-}
-
-func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataframe.DataFrame, error) {
-	lk, err := left.Col(on)
+func TestInnerJoin(t *testing.T) {
+	left := makeDF([]string{"id", "name"}, [][]any{{1, "Alice"}, {2, "Bob"}, {3, "Charlie"}})
+	right := makeDF([]string{"id", "score"}, [][]any{{1, 95}, {2, 88}, {4, 70}})
+	result, err := join.Inner(left, right, "id")
 	if err != nil {
-		return nil, fmt.Errorf("godas join: left key %w", err)
+		t.Fatal(err)
 	}
-	rk, err := right.Col(on)
-	if err != nil {
-		return nil, fmt.Errorf("godas join: right key %w", err)
+	if result.NRows() != 2 {
+		t.Fatalf("expected 2 rows, got %d", result.NRows())
 	}
-
-	rIndex := make(map[string][]int, rk.Len())
-	for i := 0; i < rk.Len(); i++ {
-		k := rk.StringAt(i)
-		rIndex[k] = append(rIndex[k], i)
-	}
-
-	leftRows := []int{}
-	rightRows := []int{}
-	rightSeen := make([]bool, rk.Len())
-
-	for li := 0; li < lk.Len(); li++ {
-		k := lk.StringAt(li)
-		matches, found := rIndex[k]
-		if found {
-			for _, ri := range matches {
-				leftRows = append(leftRows, li)
-				rightRows = append(rightRows, ri)
-				rightSeen[ri] = true
-			}
-		} else if kind == joinLeft {
-			leftRows = append(leftRows, li)
-			rightRows = append(rightRows, -1)
-		}
-	}
-
-	if kind == joinRight {
-		for ri := 0; ri < rk.Len(); ri++ {
-			if !rightSeen[ri] {
-				leftRows = append(leftRows, -1)
-				rightRows = append(rightRows, ri)
-			}
-		}
-	}
-
-	n := len(leftRows)
-	resultCols := make([]*series.Series, 0, left.NCols()+right.NCols()-1)
-
-	for _, name := range left.ColumnNames() {
-		src := left.MustCol(name)
-		resultCols = append(resultCols, buildJoinedSeries(src, leftRows, n, name))
-	}
-
-	for _, name := range right.ColumnNames() {
-		if name == on {
-			continue
-		}
-		src := right.MustCol(name)
-		outName := name
-		if left.HasCol(name) {
-			outName = name + "_right"
-		}
-		resultCols = append(resultCols, buildJoinedSeries(src, rightRows, n, outName))
-	}
-
-	return dataframe.New(resultCols...)
 }
 
-func buildJoinedSeries(src *series.Series, rows []int, n int, name string) *series.Series {
-	switch src.DType() {
-	case series.Float64:
-		vals := make([]float64, n)
-		nulls := make([]bool, n)
-		raw := src.RawFloats()
-		srcNulls := src.Nulls()
-		for i, r := range rows {
-			if r < 0 {
-				nulls[i] = true
-				vals[i] = 0
-			} else {
-				vals[i] = raw[r]
-				nulls[i] = srcNulls[r]
-			}
-		}
-		s := series.NewFloat64(name, vals)
-		copy(s.Nulls(), nulls)
-		return s
-
-	case series.Int64:
-		vals := make([]int64, n)
-		nulls := make([]bool, n)
-		raw := src.RawInts()
-		srcNulls := src.Nulls()
-		for i, r := range rows {
-			if r < 0 {
-				nulls[i] = true
-				vals[i] = 0
-			} else {
-				vals[i] = raw[r]
-				nulls[i] = srcNulls[r]
-			}
-		}
-		s := series.NewInt64(name, vals)
-		copy(s.Nulls(), nulls)
-		return s
-
-	case series.String:
-		vals := make([]string, n)
-		nulls := make([]bool, n)
-		raw := src.RawStrings()
-		srcNulls := src.Nulls()
-		for i, r := range rows {
-			if r < 0 {
-				nulls[i] = true
-				vals[i] = ""
-			} else {
-				vals[i] = raw[r]
-				nulls[i] = srcNulls[r]
-			}
-		}
-		s := series.NewString(name, vals)
-		copy(s.Nulls(), nulls)
-		return s
-
-	case series.Bool:
-		vals := make([]bool, n)
-		nulls := make([]bool, n)
-		raw := src.RawBools()
-		srcNulls := src.Nulls()
-		for i, r := range rows {
-			if r < 0 {
-				nulls[i] = true
-				vals[i] = false
-			} else {
-				vals[i] = raw[r]
-				nulls[i] = srcNulls[r]
-			}
-		}
-		s := series.NewBool(name, vals)
-		copy(s.Nulls(), nulls)
-		return s
-
-	default:
-		vals := make([]string, n)
-		nulls := make([]bool, n)
-		srcNulls := src.Nulls()
-		for i, r := range rows {
-			if r < 0 {
-				nulls[i] = true
-				vals[i] = ""
-			} else {
-				vals[i] = src.StringAt(r)
-				nulls[i] = srcNulls[r]
-			}
-		}
-		s := series.NewString(name, vals)
-		copy(s.Nulls(), nulls)
-		return s
+func TestLeftJoin(t *testing.T) {
+	left := makeDF([]string{"id", "name"}, [][]any{{1, "Alice"}, {2, "Bob"}, {3, "Charlie"}})
+	right := makeDF([]string{"id", "score"}, [][]any{{1, 95}, {2, 88}, {4, 70}})
+	result, err := join.Left(left, right, "id")
+	if err != nil {
+		t.Fatal(err)
 	}
+	if result.NRows() != 3 {
+		t.Fatalf("expected 3 rows, got %d", result.NRows())
+	}
+}
+
+func TestRightJoin(t *testing.T) {
+	left := makeDF([]string{"id", "name"}, [][]any{{1, "Alice"}, {2, "Bob"}, {3, "Charlie"}})
+	right := makeDF([]string{"id", "score"}, [][]any{{1, 95}, {2, 88}, {4, 70}})
+	result, err := join.Right(left, right, "id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.NRows() != 3 {
+		t.Fatalf("expected 3 rows, got %d", result.NRows())
+	}
+}
+
+func TestJoinMissingKey(t *testing.T) {
+	left := makeDF([]string{"id"}, [][]any{{1}})
+	right := makeDF([]string{"x"}, [][]any{{1}})
+	_, err := join.Inner(left, right, "id")
+	if err == nil {
+		t.Fatal("expected error for missing key")
+	}
+}
+
+func TestJoinEmptyLeft(t *testing.T) {
+	left, _ := dataframe.New()
+	right := makeDF([]string{"id"}, [][]any{{1}})
+	_, err := join.Inner(left, right, "id")
+	if err == nil {
+		t.Fatal("expected error for empty left")
+	}
+}
+
+func makeDF(cols []string, rows [][]any) *dataframe.DataFrame {
+	seriesList := make([]*series.Series, len(cols))
+	for i, col := range cols {
+		vals := make([]any, len(rows))
+		for j, row := range rows {
+			vals[j] = row[i]
+		}
+		switch vals[0].(type) {
+		case int:
+			ints := make([]int64, len(vals))
+			for k, v := range vals {
+				ints[k] = int64(v.(int))
+			}
+			seriesList[i] = series.NewInt64(col, ints)
+		case float64:
+			floats := make([]float64, len(vals))
+			for k, v := range vals {
+				floats[k] = v.(float64)
+			}
+			seriesList[i] = series.NewFloat64(col, floats)
+		case string:
+			strs := make([]string, len(vals))
+			for k, v := range vals {
+				strs[k] = v.(string)
+			}
+			seriesList[i] = series.NewString(col, strs)
+		default:
+			ints := make([]int64, len(vals))
+			for k, v := range vals {
+				ints[k] = v.(int64)
+			}
+			seriesList[i] = series.NewInt64(col, ints)
+		}
+	}
+	df, _ := dataframe.New(seriesList...)
+	return df
 }
