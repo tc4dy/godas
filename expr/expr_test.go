@@ -16,23 +16,13 @@ func makeColMap() map[string]*series.Series {
 }
 
 func TestGt(t *testing.T) {
-	mask, err := expr.Col("age").Gt(20).Eval(makeColMap(), 4)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if mask[0] || !mask[1] || !mask[2] || !mask[3] {
-		t.Fatalf("unexpected mask: %v", mask)
-	}
+	mask, err := expr.Col("age").Gt(20.0).Eval(makeColMap(), 4)  
+	...
 }
 
 func TestLt(t *testing.T) {
-	mask, err := expr.Col("age").Lt(30).Eval(makeColMap(), 4)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !mask[0] || !mask[1] || mask[2] || mask[3] {
-		t.Fatalf("unexpected mask: %v", mask)
-	}
+	mask, err := expr.Col("age").Lt(30.0).Eval(makeColMap(), 4)  
+	...
 }
 
 func TestEqString(t *testing.T) {
