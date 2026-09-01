@@ -220,118 +220,123 @@ func (df *DataFrame) GroupBy(keys ...string) *GroupedDF {
 }
 
 func (g *GroupedDF) Aggregate(aggs ...agg.Agg) (*DataFrame, error) {
-	for _, k := range g.keys {
-		if !g.df.HasCol(k) {
-			return nil, fmt.Errorf("godas: group-by key %q not found", k)
-		}
-	}
-	for _, a := range aggs {
-		if !g.df.HasCol(a.Col()) {
-			return nil, fmt.Errorf("godas: aggregation column %q not found", a.Col())
-		}
-	}
+    for _, k := range g.keys {
+        if !g.df.HasCol(k) {
+            return nil, fmt.Errorf("godas: group-by key %q not found", k)
+        }
+    }
+    for _, a := range aggs {
+        if !g.df.HasCol(a.Col()) {
+            return nil, fmt.Errorf("godas: aggregation column %q not found", a.Col())
+        }
+    }
 
-	type groupKey = string
-	groupOrder := []groupKey{}
-	groupRows := map[groupKey][]int{}
+    type groupKey = string
+    groupOrder := []groupKey{}
+    groupRows := map[groupKey][]int{}
 
-	for row := 0; row < g.df.nrows; row++ {
-		var kb strings.Builder
-		for ki, k := range g.keys {
-			s := g.df.MustCol(k)
-			kb.WriteString(s.StringAt(row))
-			if ki < len(g.keys)-1 {
-				kb.WriteByte('\x00')
-			}
-		}
-		key := kb.String()
-		if _, seen := groupRows[key]; !seen {
-			groupOrder = append(groupOrder, key)
-		}
-		groupRows[key] = append(groupRows[key], row)
-	}
+    for row := 0; row < g.df.nrows; row++ {
+        var kb strings.Builder
+        for ki, k := range g.keys {
+            s := g.df.MustCol(k)
+            kb.WriteString(s.StringAt(row))
+            if ki < len(g.keys)-1 {
+                kb.WriteByte('\x00')
+            }
+        }
+        key := kb.String()
+        if _, seen := groupRows[key]; !seen {
+            groupOrder = append(groupOrder, key)
+        }
+        groupRows[key] = append(groupRows[key], row)
+    }
 
-	nGroups := len(groupOrder)
-	keySeries := make([]*series.Series, len(g.keys))
-	for ki, k := range g.keys {
-		src := g.df.MustCol(k)
-		switch src.DType() {
-		case series.String:
-			vals := make([]string, nGroups)
-			for gi, key := range groupOrder {
-				rows := groupRows[key]
-				sv, _ := src.GetString(rows[0])
-				vals[gi] = sv
-			}
-			keySeries[ki] = series.NewString(k, vals)
-		case series.Float64:
-			vals := make([]float64, nGroups)
-			for gi, key := range groupOrder {
-				rows := groupRows[key]
-				fv, _ := src.GetFloat64(rows[0])
-				vals[gi] = fv
-			}
-			keySeries[ki] = series.NewFloat64(k, vals)
-		case series.Int64:
-			vals := make([]int64, nGroups)
-			for gi, key := range groupOrder {
-				rows := groupRows[key]
-				s2 := g.df.MustCol(k)
-				iv := s2.RawInts()[rows[0]]
-				vals[gi] = iv
-			}
-			keySeries[ki] = series.NewInt64(k, vals)
-		default:
-			vals := make([]string, nGroups)
-			for gi, key := range groupOrder {
-				rows := groupRows[key]
-				vals[gi] = src.StringAt(rows[0])
-			}
-			keySeries[ki] = series.NewString(k, vals)
-		}
-	}
+    nGroups := len(groupOrder)
+    keySeries := make([]*series.Series, len(g.keys))
+    for ki, k := range g.keys {
+        src := g.df.MustCol(k)
+        switch src.DType() {
+        case series.String:
+            vals := make([]string, nGroups)
+            for gi, key := range groupOrder {
+                rows := groupRows[key]
+                sv, _ := src.GetString(rows[0])
+                vals[gi] = sv
+            }
+            keySeries[ki] = series.NewString(k, vals)
+        case series.Float64:
+            vals := make([]float64, nGroups)
+            for gi, key := range groupOrder {
+                rows := groupRows[key]
+                fv, _ := src.GetFloat64(rows[0])
+                vals[gi] = fv
+            }
+            keySeries[ki] = series.NewFloat64(k, vals)
+        case series.Int64:
+            vals := make([]int64, nGroups)
+            for gi, key := range groupOrder {
+                rows := groupRows[key]
+                s2 := g.df.MustCol(k)
+                iv := s2.RawInts()[rows[0]]
+                vals[gi] = iv
+            }
+            keySeries[ki] = series.NewInt64(k, vals)
+        default:
+            vals := make([]string, nGroups)
+            for gi, key := range groupOrder {
+                rows := groupRows[key]
+                vals[gi] = src.StringAt(rows[0])
+            }
+            keySeries[ki] = series.NewString(k, vals)
+        }
+    }
 
-	aggSeries := make([]*series.Series, len(aggs))
-	for ai, a := range aggs {
-		src := g.df.MustCol(a.Col())
-		vals := make([]float64, nGroups)
-		var mu sync.Mutex
-		var wg sync.WaitGroup
-		errs := make([]error, nGroups)
-		for gi, key := range groupOrder {
-			wg.Add(1)
-			go func(gi int, key string) {
-				defer wg.Done()
-				rows := groupRows[key]
-				sub := subSeries(src, rows)
-				v, err := a.Apply(sub)
-				mu.Lock()
-				defer mu.Unlock()
-				if err != nil {
-					errs[gi] = err
-					vals[gi] = math.NaN()
-				} else {
-					vals[gi] = v
-				}
-			}(gi, key)
-		}
-		wg.Wait()
-		for _, err := range errs {
-			if err != nil {
-				return nil, err
-			}
-		}
-		aggSeries[ai] = series.NewFloat64(a.Alias(), vals)
-	}
+    aggSeries := make([]*series.Series, len(aggs))
+    for ai, a := range aggs {
+        src := g.df.MustCol(a.Col())
+        vals := make([]float64, nGroups)
+        var mu sync.Mutex
+        var wg sync.WaitGroup
+        var firstErr error 
+        errOccurred := false
+        
+        for gi, key := range groupOrder {
+            wg.Add(1)
+            go func(gi int, key string) {
+                defer wg.Done()
+                rows := groupRows[key]
+                sub := subSeries(src, rows)
+                v, err := a.Apply(sub)
+                mu.Lock()
+                defer mu.Unlock()
+                if err != nil && !errOccurred {
+                    firstErr = err
+                    errOccurred = true
+                    vals[gi] = math.NaN()
+                } else if err != nil {
+                    vals[gi] = math.NaN()
+                } else {
+                    vals[gi] = v
+                }
+            }(gi, key)
+        }
+        wg.Wait()
+        
+        if errOccurred {
+            return nil, firstErr
+        }
+        
+        aggSeries[ai] = series.NewFloat64(a.Alias(), vals)
+    }
 
-	allCols := make([]*series.Series, 0, len(keySeries)+len(aggSeries))
-	allCols = append(allCols, keySeries...)
-	allCols = append(allCols, aggSeries...)
-	return New(allCols...)
+    allCols := make([]*series.Series, 0, len(keySeries)+len(aggSeries))
+    allCols = append(allCols, keySeries...)
+    allCols = append(allCols, aggSeries...)
+    return New(allCols...)
 }
 
 func subSeries(src *series.Series, rows []int) *series.Series {
-	return src.Reorder(rows)
+    return src.Reorder(rows)
 }
 
 func (df *DataFrame) Describe() map[string]*stats.Summary {
