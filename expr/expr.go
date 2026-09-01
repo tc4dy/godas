@@ -75,6 +75,7 @@ func (c *CmpExpr) Eval(cols map[string]*series.Series, n int) ([]bool, error) {
 		return nil, fmt.Errorf("godas: column %q not found", c.col)
 	}
 	mask := make([]bool, n)
+	
 	switch v := c.val.(type) {
 	case float64:
 		if s.DType() != series.Float64 && s.DType() != series.Int64 {
@@ -87,7 +88,11 @@ func (c *CmpExpr) Eval(cols map[string]*series.Series, n int) ([]bool, error) {
 			}
 			mask[i] = evalCmp(fv, v, c.op)
 		}
+		
 	case int:
+		return nil, fmt.Errorf("godas: int type not supported, use float64 or int64")
+		
+	case int64:
 		if s.DType() != series.Float64 && s.DType() != series.Int64 {
 			return nil, fmt.Errorf("godas: column %q is not numeric", c.col)
 		}
@@ -99,6 +104,20 @@ func (c *CmpExpr) Eval(cols map[string]*series.Series, n int) ([]bool, error) {
 			}
 			mask[i] = evalCmp(fv, fv2, c.op)
 		}
+		
+	case int32:
+		if s.DType() != series.Float64 && s.DType() != series.Int64 {
+			return nil, fmt.Errorf("godas: column %q is not numeric", c.col)
+		}
+		fv2 := float64(v)
+		for i := 0; i < n; i++ {
+			fv, ok := s.GetFloat64(i)
+			if !ok {
+				continue
+			}
+			mask[i] = evalCmp(fv, fv2, c.op)
+		}
+		
 	case string:
 		if s.DType() != series.String {
 			return nil, fmt.Errorf("godas: column %q is not string", c.col)
@@ -117,6 +136,7 @@ func (c *CmpExpr) Eval(cols map[string]*series.Series, n int) ([]bool, error) {
 				return nil, fmt.Errorf("godas: operator not supported for string column")
 			}
 		}
+		
 	default:
 		return nil, fmt.Errorf("godas: unsupported comparison value type %T", c.val)
 	}
