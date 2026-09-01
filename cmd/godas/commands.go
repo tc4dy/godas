@@ -72,6 +72,9 @@ func NewFilterCmd() *cobra.Command {
 				return err
 			}
 			e := parseExpr(condition)
+			if e == nil {
+				return fmt.Errorf("godas: invalid condition: %s", condition)
+			}
 			filtered, err := df.Filter(e)
 			if err != nil {
 				return err
@@ -100,7 +103,11 @@ func NewGroupCmd() *cobra.Command {
 				return err
 			}
 			grouped := df.GroupBy(by)
-			result, err := grouped.Aggregate(parseAggs(aggs)...)
+			aggList := parseAggs(aggs)
+			if len(aggList) == 0 {
+				return fmt.Errorf("godas: no valid aggregations provided")
+			}
+			result, err := grouped.Aggregate(aggList...)
 			if err != nil {
 				return err
 			}
@@ -134,6 +141,9 @@ func NewStatsCmd() *cobra.Command {
 				return err
 			}
 			sum := stats.Describe(s)
+			if sum == nil {
+				return fmt.Errorf("godas: column %q is not numeric", col)
+			}
 			fmt.Printf("Count: %d\n", sum.Count)
 			fmt.Printf("Mean: %f\n", sum.Mean)
 			fmt.Printf("Std: %f\n", sum.Std)
@@ -239,6 +249,9 @@ func loadData(file, format string) (*dataframe.DataFrame, error) {
 }
 
 func parseExpr(cond string) expr.Expr {
+	if cond == "" {
+		return nil
+	}
 	parts := strings.SplitN(cond, ">", 2)
 	if len(parts) == 2 {
 		col := strings.TrimSpace(parts[0])
@@ -260,11 +273,23 @@ func parseExpr(cond string) expr.Expr {
 		}
 		return expr.Col(col).Eq(val)
 	}
+	parts = strings.SplitN(cond, "!=", 2)
+	if len(parts) == 2 {
+		col := strings.TrimSpace(parts[0])
+		val := strings.TrimSpace(parts[1])
+		if f, err := strconv.ParseFloat(val, 64); err == nil {
+			return expr.Col(col).Neq(f)
+		}
+		return expr.Col(col).Neq(val)
+	}
 	return nil
 }
 
 func parseFloat(s string) float64 {
-	f, _ := strconv.ParseFloat(s, 64)
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
 	return f
 }
 
