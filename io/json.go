@@ -78,12 +78,21 @@ func inferJSONSeries(name string, vals []any) *series.Series {
 
 	if allBool {
 		data := make([]bool, len(vals))
+		nulls := make([]bool, len(vals))
 		for i, v := range vals {
-			if v != nil {
-				data[i] = v.(bool)
+			if v == nil {
+				nulls[i] = true
+				continue
+			}
+			if b, ok := v.(bool); ok {
+				data[i] = b
+			} else {
+				nulls[i] = true
 			}
 		}
-		return series.NewBool(name, data)
+		s := series.NewBool(name, data)
+		copy(s.Nulls(), nulls)
+		return s
 	}
 
 	if allFloat {
@@ -93,24 +102,39 @@ func inferJSONSeries(name string, vals []any) *series.Series {
 				data[i] = math.NaN()
 				continue
 			}
-			data[i] = v.(float64)
+			if f, ok := v.(float64); ok {
+				data[i] = f
+			} else {
+				data[i] = math.NaN()
+			}
 		}
 		return series.NewFloat64(name, data)
 	}
 
 	if allString {
 		data := make([]string, len(vals))
+		nulls := make([]bool, len(vals))
 		for i, v := range vals {
-			if v != nil {
-				data[i] = v.(string)
+			if v == nil {
+				nulls[i] = true
+				continue
+			}
+			if s, ok := v.(string); ok {
+				data[i] = s
+			} else {
+				nulls[i] = true
 			}
 		}
-		return series.NewString(name, data)
+		s := series.NewString(name, data)
+		copy(s.Nulls(), nulls)
+		return s
 	}
 
 	data := make([]string, len(vals))
+	nulls := make([]bool, len(vals))
 	for i, v := range vals {
 		if v == nil {
+			nulls[i] = true
 			continue
 		}
 		switch val := v.(type) {
@@ -125,7 +149,9 @@ func inferJSONSeries(name string, vals []any) *series.Series {
 			data[i] = string(b)
 		}
 	}
-	return series.NewString(name, data)
+	s := series.NewString(name, data)
+	copy(s.Nulls(), nulls)
+	return s
 }
 
 func WriteJSON(df *dataframe.DataFrame, path string) error {
