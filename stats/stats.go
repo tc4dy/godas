@@ -159,7 +159,7 @@ func Std(s *series.Series) float64 {
 		d := v - m
 		variance += d * d
 	}
-	return math.Sqrt(variance / float64(len(vals)))
+	return math.Sqrt(variance / float64(len(vals)-1))
 }
 
 func Median(s *series.Series) float64 {
@@ -223,7 +223,7 @@ func Corr(a, b *series.Series) float64 {
 	fn := float64(count)
 	num := fn*sumAB - sumA*sumB
 	den := math.Sqrt((fn*sumA2 - sumA*sumA) * (fn*sumB2 - sumB*sumB))
-	if den == 0 {
+	if math.IsNaN(den) || den == 0 {
 		return math.NaN()
 	}
 	return num / den
