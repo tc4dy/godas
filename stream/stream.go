@@ -6,9 +6,9 @@ import (
 )
 
 type Stream struct {
-	source     source
-	chunkSize  int
-	pipes      []PipeFunc
+	source    source
+	chunkSize int
+	pipes     []PipeFunc
 }
 
 type source interface {
