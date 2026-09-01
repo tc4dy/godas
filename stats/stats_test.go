@@ -51,8 +51,8 @@ func TestMax(t *testing.T) {
 func TestStd(t *testing.T) {
 	s := series.NewFloat64("x", []float64{2, 4, 4, 4, 5, 5, 7, 9})
 	std := stats.Std(s)
-	if math.Abs(std-2.0) > 0.01 {
-		t.Fatalf("expected ~2, got %v", std)
+	if math.Abs(std-2.138) > 0.01 {
+		t.Fatalf("expected ~2.138, got %v", std)
 	}
 }
 
