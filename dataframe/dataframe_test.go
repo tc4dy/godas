@@ -57,7 +57,7 @@ func TestDataFrameColNotFound(t *testing.T) {
 func TestDataFrameFilter(t *testing.T) {
 	age := series.NewFloat64("age", []float64{10, 20, 30})
 	df, _ := dataframe.New(age)
-	filtered, err := df.Filter(expr.Col("age").Gt(15))
+	filtered, err := df.Filter(expr.Col("age").Gt(15.0))
 	if err != nil {
 		t.Fatal(err)
 	}
