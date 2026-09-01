@@ -38,8 +38,8 @@ func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataf
 	}
 
 	rIndex := make(map[string][]int, rk.Len())
-	for i := 0; i < rk.Len(); i++ {
-		k := rk.StringAt(i)
+	rawRightKeys := rk.RawStrings()
+	for i, k := range rawRightKeys {
 		rIndex[k] = append(rIndex[k], i)
 	}
 
@@ -47,8 +47,8 @@ func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataf
 	rightRows := []int{}
 	rightSeen := make([]bool, rk.Len())
 
-	for li := 0; li < lk.Len(); li++ {
-		k := lk.StringAt(li)
+	rawLeftKeys := lk.RawStrings()
+	for li, k := range rawLeftKeys {
 		matches, found := rIndex[k]
 		if found {
 			for _, ri := range matches {
@@ -72,11 +72,11 @@ func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataf
 	}
 
 	n := len(leftRows)
-	result := make([]*series.Series, 0)
+	resultCols := make([]*series.Series, 0, left.NCols()+right.NCols()-1)
 
 	for _, name := range left.ColumnNames() {
 		src := left.MustCol(name)
-		result = append(result, buildJoinedSeries(src, leftRows, n, name))
+		resultCols = append(resultCols, buildJoinedSeries(src, leftRows, n, name))
 	}
 
 	for _, name := range right.ColumnNames() {
@@ -88,56 +88,101 @@ func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataf
 		if left.HasCol(name) {
 			outName = name + "_right"
 		}
-		result = append(result, buildJoinedSeries(src, rightRows, n, outName))
+		resultCols = append(resultCols, buildJoinedSeries(src, rightRows, n, outName))
 	}
 
-	return dataframe.New(result...)
+	return dataframe.New(resultCols...)
 }
 
 func buildJoinedSeries(src *series.Series, rows []int, n int, name string) *series.Series {
 	switch src.DType() {
 	case series.Float64:
 		vals := make([]float64, n)
+		nulls := make([]bool, n)
 		raw := src.RawFloats()
 		srcNulls := src.Nulls()
-		nulls := make([]bool, n)
 		for i, r := range rows {
 			if r < 0 {
 				nulls[i] = true
+				vals[i] = 0
 			} else {
 				vals[i] = raw[r]
 				nulls[i] = srcNulls[r]
 			}
 		}
-		_ = nulls
-		return series.NewFloat64(name, vals)
+		s := series.NewFloat64(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
+
 	case series.Int64:
 		vals := make([]int64, n)
+		nulls := make([]bool, n)
 		raw := src.RawInts()
+		srcNulls := src.Nulls()
 		for i, r := range rows {
-			if r >= 0 {
+			if r < 0 {
+				nulls[i] = true
+				vals[i] = 0
+			} else {
 				vals[i] = raw[r]
+				nulls[i] = srcNulls[r]
 			}
 		}
-		return series.NewInt64(name, vals)
+		s := series.NewInt64(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
+
 	case series.String:
 		vals := make([]string, n)
+		nulls := make([]bool, n)
 		raw := src.RawStrings()
+		srcNulls := src.Nulls()
 		for i, r := range rows {
-			if r >= 0 {
+			if r < 0 {
+				nulls[i] = true
+				vals[i] = ""
+			} else {
 				vals[i] = raw[r]
+				nulls[i] = srcNulls[r]
 			}
 		}
-		return series.NewString(name, vals)
+		s := series.NewString(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
+
 	case series.Bool:
 		vals := make([]bool, n)
+		nulls := make([]bool, n)
 		raw := src.RawBools()
+		srcNulls := src.Nulls()
 		for i, r := range rows {
-			if r >= 0 {
+			if r < 0 {
+				nulls[i] = true
+				vals[i] = false
+			} else {
 				vals[i] = raw[r]
+				nulls[i] = srcNulls[r]
 			}
 		}
-		return series.NewBool(name, vals)
+		s := series.NewBool(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
+
+	default:
+		vals := make([]string, n)
+		nulls := make([]bool, n)
+		srcNulls := src.Nulls()
+		for i, r := range rows {
+			if r < 0 {
+				nulls[i] = true
+				vals[i] = ""
+			} else {
+				vals[i] = src.StringAt(r)
+				nulls[i] = srcNulls[r]
+			}
+		}
+		s := series.NewString(name, vals)
+		copy(s.Nulls(), nulls)
+		return s
 	}
-	return series.NewString(name, make([]string, n))
 }
