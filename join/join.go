@@ -37,9 +37,17 @@ func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataf
 		return nil, fmt.Errorf("godas join: right key %w", err)
 	}
 
+	leftKeys := make([]string, lk.Len())
+	for i := 0; i < lk.Len(); i++ {
+		leftKeys[i] = lk.StringAt(i)
+	}
+	rightKeys := make([]string, rk.Len())
+	for i := 0; i < rk.Len(); i++ {
+		rightKeys[i] = rk.StringAt(i)
+	}
+
 	rIndex := make(map[string][]int, rk.Len())
-	rawRightKeys := rk.RawStrings()
-	for i, k := range rawRightKeys {
+	for i, k := range rightKeys {
 		rIndex[k] = append(rIndex[k], i)
 	}
 
@@ -47,8 +55,7 @@ func perform(left, right *dataframe.DataFrame, on string, kind joinType) (*dataf
 	rightRows := []int{}
 	rightSeen := make([]bool, rk.Len())
 
-	rawLeftKeys := lk.RawStrings()
-	for li, k := range rawLeftKeys {
+	for li, k := range leftKeys {
 		matches, found := rIndex[k]
 		if found {
 			for _, ri := range matches {
