@@ -8,14 +8,14 @@ import (
 	"github.com/tc4dy/godas/series"
 )
 
-func TestSumAgg(t *testing.T) {
-	s := series.NewFloat64("x", []float64{10, 20, 30})
-	v, err := agg.Sum("x").Apply(s)
+func TestStdAgg(t *testing.T) {
+	s := series.NewFloat64("x", []float64{2, 4, 4, 4, 5, 5, 7, 9})
+	v, err := agg.Std("x").Apply(s)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v != 60.0 {
-		t.Fatalf("expected 60, got %v", v)
+	if math.Abs(v-2.138) > 0.01 {
+		t.Fatalf("expected ~2.138, got %v", v)
 	}
 }
 
