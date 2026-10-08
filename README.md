@@ -50,7 +50,7 @@ It is built around a columnar in-memory model: each column is a strongly typed `
 
 ## Features
 
-### 🏗️ Data Structures
+### Data Structures
 | Feature | Details |
 |---|---|
 | **Typed Series** | `float64`, `int64`, `string`, `bool` with per-element null tracking |
@@ -58,7 +58,7 @@ It is built around a columnar in-memory model: each column is a strongly typed `
 | **Null semantics** | NaN-aware for numerics; explicit null bitmap for all types |
 | **Immutable operations** | Transformations return new structures; originals are never mutated |
 
-### 🔍 Filtering & Expressions
+### Filtering & Expressions
 | Feature | Details |
 |---|---|
 | **Comparison operators** | `Gt`, `Gte`, `Lt`, `Lte`, `Eq`, `Neq` for numeric and string columns |
@@ -66,7 +66,7 @@ It is built around a columnar in-memory model: each column is a strongly typed `
 | **Logical composition** | `And`, `Or`, `Not` — composable to arbitrary depth |
 | **Bool column filter** | Pass a pre-computed bool `Series` directly as a filter mask |
 
-### 📊 Aggregations
+### Aggregations
 | Function | Description |
 |---|---|
 | `Sum` | Sum of non-null values |
@@ -79,26 +79,26 @@ It is built around a columnar in-memory model: each column is a strongly typed `
 
 All aggregations support `.As(alias)` for column renaming and are executed concurrently across groups during `GroupBy`.
 
-### 🔗 Joins
+### Joins
 - **Inner**, **Left**, and **Right** hash joins on a single key column
 - Automatic suffix `_right` for name collisions from the right frame
 - Null-row handling for unmatched keys in outer joins
 
-### 📁 I/O Formats
+### I/O Formats
 | Format | Read | Write | Notes |
 |---|---|---|---|
-| CSV | ✅ | ✅ | Configurable delimiter, header, null token, worker count |
-| JSON | ✅ | ✅ | Array-of-objects format |
-| NDJSON | ✅ | ✅ | Newline-delimited JSON; concurrent column inference |
-| Parquet | ✅ | ✅ | Via Apache Arrow; supports all four dtypes |
+| CSV | [+] | [+] | Configurable delimiter, header, null token, worker count |
+| JSON | [+] | [+] | Array-of-objects format |
+| NDJSON | [+] | [+] | Newline-delimited JSON; concurrent column inference |
+| Parquet | [+] | [+] | Via Apache Arrow; supports all four dtypes |
 
-### ⚡ Performance
+### Performance
 - Parallel CSV column parsing with a configurable worker pool
 - Concurrent group aggregation via `sync.WaitGroup`
 - Reusable slice allocations through `sync.Pool` (float64, string, bool)
 - Streaming pipeline for large files via `stream.FromCSV(...).Chunk(...).Pipe(...).Collect()`
 
-### 🖥️ CLI
+### CLI
 A fully functional command-line interface (`godas`) for scripted and exploratory data work, built on [cobra](https://github.com/spf13/cobra).
 
 ---
