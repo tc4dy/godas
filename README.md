@@ -1,5 +1,5 @@
 ![Godas Banner](godasbanner.png)
-# GODAS | Go Data Analysis Suite 📁 (Godas Project) 
+# GODAS | Go Data Analysis Suite (Godas Project) 
 
 <div align="center">
   
